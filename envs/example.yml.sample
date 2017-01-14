@@ -1,0 +1,29 @@
+---
+default:
+  hidden: true
+  log: ./logs/deploy.log
+
+  general:
+    # this will be merged to the remote and local section
+    repo: git@github.com:mink0/deploy.git
+
+  remote:
+    servers:
+      - alpha.domain.com
+      - beta.domain.com
+
+    # settings for the commands that will be run remotely
+    log:
+      nginx: /var/log/nginx/nginx.log
+      apache: /var/log/httpd/httpd.log
+
+    cmd:
+      reload: sudo /usr/local/bin/reload
+      restart: sudo /usr/local/bin/restart
+      status: sudo /usr/local/bin/status
+      pre: echo 'no pre script configured'
+      post: echo 'no post script configured'
+
+  local:
+    # settings for the commands that will be run localy
+    path: /home/user/repo
