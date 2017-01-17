@@ -137,7 +137,7 @@ exports.task = (env, argv, taskCb) => {
       if (argv.patch) version.patch();
       else if (argv.minor) version.minor();
 
-      env.log('cooking release: ' +
+      env.log('cooking the release: ' +
         dopy.colors.autoColor(version + '')(version));
       cb(null);
     }

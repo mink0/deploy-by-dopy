@@ -105,7 +105,7 @@ exports.task = (env, argv, taskCb) => {
         });
     };
 
-    let cmd = env.config.remote.cmd.status || env.config.remote.cmd.restart;
+    let cmd = env.config.remote.cmd.reload || env.config.remote.cmd.restart;
     env.ssh.execSeries(cmd, prompt, cb);
   }
 
@@ -146,7 +146,7 @@ exports.task = (env, argv, taskCb) => {
     let noChanges = false;
     let config = target.config.remote;
 
-    target.ssh.options.cwd = config.path;
+    // target.ssh.sshOptions.cwd = config.path;
 
     async.series([
       checkBranch,
@@ -404,7 +404,7 @@ exports.task = (env, argv, taskCb) => {
         if (err) return cb(null);
         if (!tagRe.test(res[0].stdout.trim())) return cb(null);
 
-        target.log('release is found');
+        target.log('...release found');
         let tag = res[0].stdout.trim().match(tagRe)[1];
 
         target.remote('cat ./CHANGELOG.md', { mute: true }, (err, res) => {
