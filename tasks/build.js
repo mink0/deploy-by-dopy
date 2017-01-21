@@ -58,8 +58,8 @@ exports.task = (env, argv, taskCb) => {
 
   let version;
   let config = env.config.local;
-  if (env.targets)
-    config = env.targets[0].config.local;
+  if (env.targets) config = env.targets[0].config.local;
+  let branch = 'master'; //config.branch;
 
   let reVer = /(\d+)\.(\d+)\.(\d+)/;
 
@@ -107,13 +107,13 @@ exports.task = (env, argv, taskCb) => {
 
   function gitReset(cb) {
     env.local('git fetch --prune && git reset --hard origin/' +
-      config.branch, cb);
+      branch, cb);
   }
 
   function gitUpdate(cb) {
-    env.local('git checkout ' + config.branch +
+    env.local('git checkout ' + branch +
       ' && git fetch --prune && git diff --name-status origin/' +
-      config.branch + ' && git reset --hard origin/' + config.branch,
+      branch + ' && git reset --hard origin/' + branch,
       { mute: true }, cb);
   }
 
@@ -219,8 +219,8 @@ exports.task = (env, argv, taskCb) => {
   function confirm(cb) {
     inquirer.prompt([{
       type: 'confirm',
-      message: 'Push "' + config.branch +
-          '" to "origin/' + config.branch + '"?',
+      message: 'Push "' + branch +
+          '" to "origin/' + branch + '"?',
       name: 'confirm'
     }]).then(ans => {
       if (!ans.confirm) {
@@ -234,7 +234,7 @@ exports.task = (env, argv, taskCb) => {
 
   function gitPush(cb) {
     env.log('pushing release to origin:');
-    env.local(`git push origin ${config.branch}:${config.branch}`, cb);
+    env.local(`git push origin ${branch}:${branch}`, cb);
   }
 
   function gitPushTags(cb) {

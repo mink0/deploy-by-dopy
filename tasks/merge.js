@@ -1,6 +1,7 @@
 const async = require('async');
 const chalk = require('chalk');
 const inquirer = require('inquirer');
+const log = require('debug')('merge');
 
 const BRANCHES = ['test', 'staging', 'development', 'demo'];
 const dopy = global.dopy;
@@ -28,7 +29,7 @@ exports.builder = (yargs) => {
 };
 
 exports.task = (env, argv, taskCb) => {
-  let branches = argv.b ? [argv.b] : BRANCHES;
+  let branches = argv.b ? argv.b.split(',') : BRANCHES;
   let checkResults = {};
   let target = env.targets ? env.targets[0] : env;
 
@@ -85,6 +86,7 @@ exports.task = (env, argv, taskCb) => {
           }, (err, res) => {
             if (err) return next(err);
 
+            log('single section (should be 1)', res.stdout);
             if (res.stdout.trim() !== '1') checkResults.ok = false;
 
             return next(null);
@@ -115,6 +117,7 @@ exports.task = (env, argv, taskCb) => {
 
             if (afterMasterSection) {
               if (reDiff.test(lines[i].trim())) {
+                log('after master', lines[i].trim());
                 checkResults.ok = false;
                 break;
               }
@@ -198,7 +201,7 @@ exports.task = (env, argv, taskCb) => {
     function gitPush(branch, cb) {
       if (!checkResults.push) return cb(null);
 
-      env.log('pushing new version of "${branch}" to origin');
+      env.log(`pushing new version of "${branch}" to origin`);
       target.local('git push origin ' + branch + ':' + branch, cb);
     }
   }
