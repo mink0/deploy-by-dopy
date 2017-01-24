@@ -152,6 +152,7 @@ exports.task = (env, argv, taskCb) => {
       checkBranch,
       preCmd,
       gitFetch,
+      checkRelease,
       checkMigrations('migrations'),
       checkMigrations('fx-migrations'),
       checkPackageJson,
@@ -277,6 +278,26 @@ exports.task = (env, argv, taskCb) => {
       };
     }
 
+    function checkRelease(cb) {
+      if (config.branch !== 'master') return cb(null);
+
+      let tagRe = /v(\d+.\d+.\d+)$/i;
+      target.remote(
+        `git describe --tags $(git rev-parse origin/${config.branch})`, {
+          mute: true
+        }, (err, res) => {
+          if (err) return cb(null);
+          if (!tagRe.test(res[0].stdout.trim()))
+            checkResults['release'] = {
+              title: 'release not found at origin/' + config.branch,
+              descr: res[0].stdout
+            };
+
+          return cb(null);
+
+        });
+    }
+
     function showDiff(cb) {
       target.remote(`git diff --name-status origin/${config.branch}`,
         (err, res) => {
@@ -284,7 +305,7 @@ exports.task = (env, argv, taskCb) => {
 
           if (!res[0].stdout) noChanges = true;
 
-          cb(null);
+          return cb(null);
       });
     }
 
