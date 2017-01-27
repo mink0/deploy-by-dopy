@@ -3,7 +3,7 @@ const chalk = require('chalk');
 const inquirer = require('inquirer');
 const log = require('debug')('merge');
 
-const BRANCHES = ['test', 'staging', 'development', 'demo'];
+const BRANCHES = ['test', 'staging', 'development', 'demo', 'vision'];
 const dopy = global.dopy;
 
 exports.command = 'merge [targets]';
@@ -15,7 +15,10 @@ exports.builder = (yargs) => {
   yargs
     .example('$0 merge -b test')
     .describe('b', 'Merge master into selected branch')
-    .choices('b', BRANCHES);
+    .choices('b', BRANCHES)
+    .boolean('f')
+    .alias('f', 'force')
+    .describe('f', 'reset remote repo to configured branch');
 
   let targets = dopy.config.env.config.targets;
 
@@ -30,179 +33,212 @@ exports.builder = (yargs) => {
 
 exports.task = (env, argv, taskCb) => {
   let branches = argv.b ? argv.b.split(',') : BRANCHES;
-  let checkResults = {};
   let target = env.targets ? env.targets[0] : env;
+  let failed = [];
 
-  branchLoop(taskCb);
+  async.series([
+    branchLoop,
+    printResults
+  ], taskCb);
 
-  function branchLoop(cb) {
+  function printResults(cb) {
+    if (failed.length === 0) return cb(null);
+
+    console.log(chalk.bgRed('failed branches:'), failed.join(','));
+
+    cb(null);
+  }
+
+  function branchLoop(branchesCb) {
     let tasks = [];
 
-    branches.forEach(function(branch) {
-      tasks = tasks.concat([
-        cb => gitReset(branch, cb),
-        cb => gitMergeMaster(branch, cb),
-        cb => checkChangelog(branch, cb),
-        cb => report(branch, cb),
-        cb => confirm(branch, cb),
-        cb => gitPush(branch, cb)
-      ]);
-    });
+    branches.forEach((branch) => tasks.push(cb => branchProcessor(branch, cb)));
 
-    async.series(tasks, cb);
+    async.series(tasks, branchesCb);
 
-    function gitReset(branch, cb) {
-      env.log(`reseting branch "${branch}"...`);
+    function branchProcessor(branch, branchCb) {
+      let checkResults = {
+        ok: true,
+        dups: []
+      };
 
-      checkResults.ok = true;
-      checkResults.dups = [];
-      checkResults.push = false;
+      async.series([
+        gitCheckout,
+        gitMergeMaster,
+        checkChangelog,
+        report,
+        confirm,
+        gitPush
+      ], branchCb);
 
-      target.local('git checkout ' + branch +
-        ' && git fetch && git reset --hard origin/' + branch, cb);
-    }
+      function gitCheckout(cb) {
+        env.log(`changing branch "${branch}"...`);
 
-    function gitMergeMaster(branch, cb) {
-      env.log(`merging master into "${branch}"...`);
-      target.local('git pull origin master', cb);
-    }
+        target.local('git checkout ' + branch +
+          ' && git fetch --prune && git reset --hard origin/' + branch, cb);
+      }
 
-    function checkChangelog(branch, cb) {
-      // all changes should be in one single section between ##master
-      // and ## x.y.z
+      function gitReset(cb) {
+        env.log(`reseting branch "${branch}"...`);
 
-      env.log('running CHANGELOG.md checks...');
+        target.local('git reset --hard origin/' + branch, cb);
+      }
 
-      async.parallel([
-        cb => checkSingleSection(cb),
-        cb => checkPlacement(cb),
-        cb => checkDuplicates(cb),
-      ], cb);
+      function gitMergeMaster(cb) {
+        env.log(`merging master into "${branch}"...`);
+        target.local('git pull origin master', (err, res) => {
+          if (err) {
+            env.log('merge failed!', 'red');
+            failed.push(branch);
+            return gitReset(branchCb);
+          }
 
-      function checkSingleSection(next) {
-        target.local('git diff -U0 origin/master CHANGELOG.md | ' +
-          'grep "@@" | wc -l', {
+          cb(null);
+        });
+      }
+
+      function checkChangelog(cb) {
+        // all changes should be in one single section between ##master
+        // and ## x.y.z
+
+        env.log('running CHANGELOG.md checks...');
+
+        async.parallel([
+          cb => checkSingleSection(cb),
+          cb => checkPlacement(cb),
+          cb => checkDuplicates(cb),
+        ], cb);
+
+        function checkSingleSection(next) {
+          target.local('git diff -U0 origin/master CHANGELOG.md | ' +
+            'grep "@@" | wc -l', {
+              mute: true
+            }, (err, res) => {
+              if (err) return next(err);
+
+              log('single section (should be 1)', res.stdout);
+              if (res.stdout.trim() !== '1') checkResults.ok = false;
+
+              return next(null);
+            });
+        }
+
+        function checkPlacement(next) {
+          let reMaster = /##\smaster/i;
+          let reVer = /##\s(\d+)\.(\d+)\.(\d+)/;
+          let reDiff = /^[+-]\s/;
+
+          target.local('git diff -U10 origin/master CHANGELOG.md', {
             mute: true
           }, (err, res) => {
             if (err) return next(err);
 
-            log('single section (should be 1)', res.stdout);
-            if (res.stdout.trim() !== '1') checkResults.ok = false;
+            if (res.stdout.trim() === '') {
+              checkResults.ok = true;
+              return next(null);
+            }
+
+            let lines = res.stdout.split('\n');
+            let masterFound, afterMasterSection;
+            for (let i = 0; i < lines.length; i++) {
+              if (reMaster.test(lines[i])) masterFound = true;
+
+              if (masterFound && reVer.test(lines[i])) afterMasterSection = true;
+
+              if (afterMasterSection) {
+                if (reDiff.test(lines[i].trim())) {
+                  log('after master', lines[i].trim());
+                  checkResults.ok = false;
+                  break;
+                }
+              }
+            }
 
             return next(null);
           });
-      }
+        }
 
-      function checkPlacement(next) {
-        let reMaster = /##\smaster/i;
-        let reVer = /##\s(\d+)\.(\d+)\.(\d+)/;
-        let reDiff = /^[+-]\s/;
+        function checkDuplicates(next) {
+          let rePost = /\[Post\]/;
 
-        target.local('git diff -U10 origin/master CHANGELOG.md', {
-          mute: true
-        }, (err, res) => {
-          if (err) return next(err);
+          target.local('git diff origin/master CHANGELOG.md', {
+            mute: true
+          }, (err, res) => {
+            if (err) return next(err);
 
-          if (res.stdout.trim() === '') {
-            checkResults.ok = true;
-            return next(null);
-          }
-
-          let lines = res.stdout.split('\n');
-          let masterFound, afterMasterSection;
-          for (let i = 0; i < lines.length; i++) {
-            if (reMaster.test(lines[i])) masterFound = true;
-
-            if (masterFound && reVer.test(lines[i])) afterMasterSection = true;
-
-            if (afterMasterSection) {
-              if (reDiff.test(lines[i].trim())) {
-                log('after master', lines[i].trim());
-                checkResults.ok = false;
-                break;
+            let lines = res.stdout.split('\n');
+            let sorted = lines.slice().sort();
+            for (let i = 0; i < sorted.length - 1; i++) {
+              if (sorted[i].length > 10 &&
+                !rePost.test(sorted[i]) &&
+                sorted[i + 1] === sorted[i]) {
+                checkResults.dups.push(sorted[i]);
               }
             }
-          }
 
-          return next(null);
-        });
+            if (checkResults.dups.length > 0) checkResults.ok = false;
+
+            return next(null);
+          });
+        }
       }
 
-      function checkDuplicates(next) {
-        let rePost = /\[Post\]/;
-
+      function report(cb) {
         target.local('git diff origin/master CHANGELOG.md', {
           mute: true
         }, (err, res) => {
-          if (err) return next(err);
+          if (err) return cb(err);
+
+          env.log('git diff origin/master CHANGELOG.md:');
 
           let lines = res.stdout.split('\n');
-          let sorted = lines.slice().sort();
-          for (let i = 0; i < sorted.length - 1; i++) {
-            if (sorted[i].length > 10 &&
-              !rePost.test(sorted[i]) &&
-              sorted[i + 1] === sorted[i]) {
-              checkResults.dups.push(sorted[i]);
-            }
+          lines.forEach(line => {
+            if (checkResults.dups.indexOf(line) !== -1)
+              console.log(chalk.magenta(line));
+            else
+              console.log(line);
+          });
+
+          if (checkResults.dups.length > 0) {
+            console.log(chalk.inverse('duplicate entries are found!'));
+            checkResults.dups.forEach(str => {
+              console.log('duplicate:', str);
+            });
           }
 
-          if (checkResults.dups.length > 0) checkResults.ok = false;
-
-          return next(null);
+          return cb(null);
         });
       }
-    }
 
-    function report(branch, cb) {
-      target.local('git diff origin/master CHANGELOG.md', {
-        mute: true
-      }, (err, res) => {
-        if (err) return cb(err);
+      function confirm(cb) {
+        if (argv.f) {
+          if (checkResults.ok) return cb(null);
 
-        env.log('git diff origin/master CHANGELOG.md:');
+          failed.push(branch);
+          return gitReset(branchCb);
+        }
 
-        let lines = res.stdout.split('\n');
-        lines.forEach(line => {
-          if (checkResults.dups.indexOf(line) !== -1)
-            console.log(chalk.magenta(line));
-          else
-            console.log(line);
+        inquirer.prompt([{
+          type: 'confirm',
+          message: target.config.local.path + ': push branch "' +
+            branch + '" to "origin/' + branch + '"?',
+          name: 'confirm',
+          default: checkResults.ok
+        }]).then(ans => {
+          if (!ans.confirm) {
+            env.log('task canceled. reseting...', 'dim');
+            failed.push(branch);
+            return gitReset(branchCb);
+          }
+
+          return cb(null);
         });
+      }
 
-        if (checkResults.dups.length > 0) {
-          env.log(chalk.bgYellow('duplicate entries are found!'));
-          checkResults.dups.forEach(str => {
-            env.log('duplicate:', str);
-          });
-        }
-
-        cb(null);
-      });
-    }
-
-    function confirm(branch, cb) {
-      inquirer.prompt([{
-        type: 'confirm',
-        message: target.config.local.path + ': push branch "' +
-          branch + '" to "origin/' + branch + '"?',
-        name: 'confirm',
-        default: checkResults.ok
-      }]).then(ans => {
-        if (!ans.confirm) {
-          env.log('task canceled. reseting...', 'dim');
-          return gitReset(branch, cb);
-        }
-
-        checkResults.push = true;
-        return cb(null);
-      });
-    }
-
-    function gitPush(branch, cb) {
-      if (!checkResults.push) return cb(null);
-
-      env.log(`pushing new version of "${branch}" to origin`);
-      target.local('git push origin ' + branch + ':' + branch, cb);
+      function gitPush(cb) {
+        env.log(`pushing new version of "${branch}" to origin`);
+        target.local('git push origin ' + branch + ':' + branch, cb);
+      }
     }
   }
 };
