@@ -11,14 +11,13 @@ exports.command = 'merge [targets]';
 exports.desc = 'Merge master into selected branches';
 
 exports.builder = (yargs) => {
-
   yargs
-    .example('$0 merge -b test')
-    .describe('b', 'Merge master into selected branch')
+    .describe('b', 'select the branch(es)')
     .choices('b', BRANCHES)
     .boolean('f')
-    .alias('f', 'force')
-    .describe('f', 'reset remote repo to configured branch');
+    .describe('f', 'merge without confirmation prompts')
+    .example('$0 <env> merge')
+    .example('$0 <env> merge -b development,test,staging');
 
   let targets = dopy.config.env.config.targets;
 

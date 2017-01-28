@@ -14,12 +14,12 @@ exports.desc = 'Build new release locally and push it to origin repository';
 exports.builder = (yargs) => {
   yargs
     .alias('v', 'version')
-    .describe('version', 'Specify build version in semver format: X.Y.Z')
+    .describe('version', 'specify build version in semver format: X.Y.Z')
     .nargs('v', 1)
     .alias('p', 'patch')
-    .describe('patch', 'Build patch version: X.Y.Z+1')
+    .describe('patch', 'build patch version: X.Y.Z+1')
     .alias('n', 'minor')
-    .describe('minor', 'Build minor version: X.Y+1.0')
+    .describe('minor', 'build minor version: X.Y+1.0')
     .conflicts('minor', 'patch')
     .example('build -v 1.6.2')
     .group(['version', 'patch', 'minor'], 'Version:')
