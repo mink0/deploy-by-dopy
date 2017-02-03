@@ -428,46 +428,32 @@ exports.task = (env, argv, taskCb) => {
       if (config.branch !== 'master') return cb(null);
       if (checkResults['not-release']) return cb(null);
 
-      let installedRelease;
+      target.remote('cat ./CHANGELOG.md', { mute: true }, (err, res) => {
+        if (err) return next(err);
 
-      target.remote('git describe --tags', { mute: true }, (err, res) => {
-        if (err) return cb(err);
+        let data = res[0].stdout.trim();
+        let lines = data.split('\n');
+        let block = [];
+        let count = 0;
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].indexOf('##') === 0) count++;
+          if (count === 2) block.push(lines[i]);
+          if (count === 3) break;
+        }
 
-        installedRelease = res[0].stdout.trim();
+        block.splice(0, 1);
 
-        target.log('...release found: ' + installedRelease);
-
-        reportPush(cb);
-      });
-
-      function reportPush(next) {
-        target.remote('cat ./CHANGELOG.md', { mute: true }, (err, res) => {
-          if (err) return next(err);
-
-          let data = res[0].stdout.trim();
-          let lines = data.split('\n');
-          let block = [];
-          let count = 0;
-          for (let i = 0; i < lines.length; i++) {
-            if (lines[i].indexOf('##') === 0) count++;
-            if (count === 2) block.push(lines[i]);
-            if (count === 3) break;
-          }
-
-          block.splice(0, 1);
-
-          let out = [];
-          out.push(`<b>Релиз ${installedRelease} для ${target.name} ` +
-            'установлен на продуктивную систему</b>');
-          out.push('Список изменений:');
-          block.forEach(function(line) {
-            if (line && line.trim() !== '') out.push(line);
-          });
-
-          report.push(out.join('\n'));
-          next(null);
+        let out = [];
+        out.push(`<b>Релиз ${release} для ${target.name} ` +
+          'установлен на продуктивную систему</b>');
+        out.push('Список изменений:');
+        block.forEach(function(line) {
+          if (line && line.trim() !== '') out.push(line);
         });
-      }
+
+        report.push(out.join('\n'));
+        cb(null);
+      });
     }
 
     function showResults(cb) {
