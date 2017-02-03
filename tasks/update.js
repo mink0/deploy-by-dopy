@@ -146,8 +146,8 @@ exports.task = (env, argv, taskCb) => {
       preCmd,
       gitFetch,
       checkRelease,
-      checkMigrations('migrations'),
-      checkMigrations('fx-migrations'),
+      checkMigrations('migrate'),
+      checkMigrations('migrate_flexible'),
       checkPackageJson,
       checkFileChanges('config'),
       checkFileChanges('indexes'),
@@ -193,7 +193,7 @@ exports.task = (env, argv, taskCb) => {
         `git describe --tags $(git rev-parse origin/${config.branch})`, {
           mute: true
         }, (err, res) => {
-          if (err) return cb(null);
+          if (err) return cb(err);
 
           if (!tagRe.test(res[0].stdout.trim())) {
             checkResults['not-release'] = {
@@ -210,9 +210,9 @@ exports.task = (env, argv, taskCb) => {
 
     function checkMigrations(type) {
       let re;
-      if (type === 'migrations')
+      if (type === 'migrate')
         re = /(migrations\/.*\.(sql|js))/ig;
-      else if (type === 'fx-migrations')
+      else if (type === 'migrate_flexible')
         re = /(migrations\/flexible\/.*\.xml)/ig;
 
       return (cb) => {
@@ -311,6 +311,8 @@ exports.task = (env, argv, taskCb) => {
         console.log(checkResults[res].descr);
         tags += chalk.reset.bgRed(res) + ' ';
       });
+
+      if (release) target.log('release: ' + chalk.reset('v' + release));
 
       if (!noChanges) tags += chalk.reset.bgBlack('code');
       else tags += chalk.inverse('no code changes found');
@@ -426,34 +428,46 @@ exports.task = (env, argv, taskCb) => {
       if (config.branch !== 'master') return cb(null);
       if (checkResults['not-release']) return cb(null);
 
-      target.log('...release found');
+      let installedRelease;
 
-      target.remote('cat ./CHANGELOG.md', { mute: true }, (err, res) => {
+      target.remote('git describe --tags', { mute: true }, (err, res) => {
         if (err) return cb(err);
 
-        let data = res[0].stdout.trim();
-        let lines = data.split('\n');
-        let block = [];
-        let count = 0;
-        for (let i = 0; i < lines.length; i++) {
-          if (lines[i].indexOf('##') === 0) count++;
-          if (count === 2) block.push(lines[i]);
-          if (count === 3) break;
-        }
+        installedRelease = res[0].stdout.trim();
 
-        block.splice(0, 1);
+        target.log('...release found: ' + installedRelease);
 
-        let out = [];
-        out.push(`<b>Релиз ${release} для ${target.name} ` +
-          'установлен на продуктивную систему</b>');
-        out.push('Список изменений:');
-        block.forEach(function(line) {
-          if (line && line.trim() !== '') out.push(line);
-        });
-
-        report.push(out.join('\n'));
-        cb(null);
+        reportPush(cb);
       });
+
+      function reportPush(next) {
+        target.remote('cat ./CHANGELOG.md', { mute: true }, (err, res) => {
+          if (err) return next(err);
+
+          let data = res[0].stdout.trim();
+          let lines = data.split('\n');
+          let block = [];
+          let count = 0;
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].indexOf('##') === 0) count++;
+            if (count === 2) block.push(lines[i]);
+            if (count === 3) break;
+          }
+
+          block.splice(0, 1);
+
+          let out = [];
+          out.push(`<b>Релиз ${installedRelease} для ${target.name} ` +
+            'установлен на продуктивную систему</b>');
+          out.push('Список изменений:');
+          block.forEach(function(line) {
+            if (line && line.trim() !== '') out.push(line);
+          });
+
+          report.push(out.join('\n'));
+          next(null);
+        });
+      }
     }
 
     function showResults(cb) {
