@@ -429,7 +429,7 @@ exports.task = (env, argv, taskCb) => {
       if (checkResults['not-release']) return cb(null);
 
       target.remote('cat ./CHANGELOG.md', { mute: true }, (err, res) => {
-        if (err) return next(err);
+        if (err) return cb(err);
 
         let data = res[0].stdout.trim();
         let lines = data.split('\n');
@@ -445,7 +445,7 @@ exports.task = (env, argv, taskCb) => {
 
         let out = [];
         out.push(`<b>Релиз ${release} для ${target.name} ` +
-          'установлен на продуктивную систему</b>');
+                      'установлен на продуктивную систему</b>');
         out.push('Список изменений:');
         block.forEach(function(line) {
           if (line && line.trim() !== '') out.push(line);
