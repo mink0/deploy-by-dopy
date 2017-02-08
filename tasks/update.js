@@ -312,7 +312,7 @@ exports.task = (env, argv, taskCb) => {
         tags += chalk.reset.bgRed(res) + ' ';
       });
 
-      if (release) target.log('release: ' + chalk.reset('v' + release));
+      if (release) target.log('origin release: ' + chalk.reset('v' + release));
 
       if (!noChanges) tags += chalk.reset.bgBlack('code');
       else tags += chalk.inverse('no code changes found');

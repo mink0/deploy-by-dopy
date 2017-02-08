@@ -7,7 +7,11 @@ exports.command = 'log [type]';
 exports.desc = 'Show logs from remote server';
 
 exports.builder = (yargs) => {
+  if (!config.env.config.remote) return;
+
   let targets = config.env.config.remote.log;
+
+  if (!targets || typeof targets !== 'object') return;
 
   for (let target in targets) {
     yargs.command(target, `log path: ${targets[target]}`);

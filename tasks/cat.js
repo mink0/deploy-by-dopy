@@ -2,9 +2,9 @@ const dopy = global.dopy;
 
 const config = dopy.config;
 
-exports.command = 'cat [name]';
+exports.command = 'cat [file]';
 
-exports.desc = 'Cat file from remote server';
+exports.desc = 'Print file from remote server';
 
 exports.builder = (yargs) => {
   if (!config.env.config.remote) return;
@@ -21,9 +21,9 @@ exports.builder = (yargs) => {
 exports.task = (env, argv, taskCb) => {
   let files = env.config.remote.cat;
 
-  if (!files) return taskCb('no cat files configured for ' + env.name);
+  if (!files) return taskCb('no cat files configured for ' + env.file);
 
-  let path = (typeof files === 'object') ? files[argv.name || 'config'] : files;
+  let path = (typeof files === 'object') ? files[argv.file || 'config'] : files;
 
   env.remote(`cat ${path}`, { verbose:true }, taskCb);
 };
