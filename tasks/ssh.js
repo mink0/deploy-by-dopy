@@ -31,6 +31,9 @@ exports.task = (env, argv, taskCb) => {
 
   let srv = argv.server || servers[0];
 
+  if (env.config.remote.user && srv.indexOf('@') === -1)
+    srv = `${env.config.remote.user}@${srv}`;
+
   let params = ['-A', '-t', srv, 'cd ' + path + '; bash'];
 
   spawn(cmd, params, { stdio: 'inherit' }, taskCb);

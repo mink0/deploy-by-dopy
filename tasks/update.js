@@ -137,7 +137,11 @@ exports.task = (env, argv, taskCb) => {
 
   function targetProcessor(target, targetCb) {
     let checkResults = {};
-    let release;
+    let release = {
+      origin: null,
+      current: null,
+      exact: null
+    };
     let noChanges = false;
     let config = target.config.remote;
 
@@ -145,7 +149,8 @@ exports.task = (env, argv, taskCb) => {
       checkBranch,
       preCmd,
       gitFetch,
-      checkRelease,
+      checkOriginRelease,
+      checkLocalRelease,
       checkMigrations('migrate'),
       checkMigrations('migrate_flexible'),
       checkPackageJson,
@@ -185,27 +190,41 @@ exports.task = (env, argv, taskCb) => {
       target.remote('git fetch --prune', cb);
     }
 
-    function checkRelease(cb) {
-      if (config.branch !== 'master') return cb(null);
-
+    function checkOriginRelease(cb) {
       let tagRe = /v(\d+.\d+.\d+)$/i;
       target.remote(
-        `git describe --tags $(git rev-parse origin/${config.branch})`, {
+        `git describe --tags --always $(git rev-parse origin/${config.branch})`, {
           mute: true
         }, (err, res) => {
           if (err) return cb(err);
 
-          if (!tagRe.test(res[0].stdout.trim())) {
+          release.origin = res[0].stdout.trim();
+
+          if (config.branch !== 'master') return cb(null);
+
+          if (!tagRe.test(release.origin)) {
             checkResults['not-release'] = {
               title: `release not found at origin/${config.branch})`,
-              descr: res[0].stdout
+              descr: release.origin
             };
           } else {
-            release = res[0].stdout.trim().match(tagRe)[1];
+            release.exact = release.origin.match(tagRe)[1];
           }
 
           return cb(null);
         });
+    }
+
+    function checkLocalRelease(cb) {
+      target.remote('git describe --tags --always', {
+        mute: true
+      }, (err, res) => {
+        if (err) return cb(err);
+
+        release.local = res[0].stdout.trim();
+
+        return cb(null);
+      });
     }
 
     function checkMigrations(type) {
@@ -312,7 +331,9 @@ exports.task = (env, argv, taskCb) => {
         tags += chalk.reset.bgRed(res) + ' ';
       });
 
-      if (release) target.log('origin release: ' + chalk.reset('v' + release));
+      target.log('tags:', 'reset');
+      target.log('  current: ' + chalk.reset(release.local));
+      target.log('  installing: ' + chalk.reset(release.origin));
 
       if (!noChanges) tags += chalk.reset.bgBlack('code');
       else tags += chalk.inverse('no code changes found');
@@ -327,7 +348,7 @@ exports.task = (env, argv, taskCb) => {
       if (checkResults.config)
         target.log('you should edit config file before restart!');
       if (checkResults.indexes)
-        target.log('you should rebuild Sphinx indexes!');
+        target.log('you should run: npm run \'reindex -- -i deals -d -s 1200\'');
       if (checkResults['packages'])
         target.log('you should run \`npm install\`!');
 
@@ -444,7 +465,7 @@ exports.task = (env, argv, taskCb) => {
         block.splice(0, 1);
 
         let out = [];
-        out.push(`<b>Релиз ${release} для ${target.name} ` +
+        out.push(`<b>Релиз ${release.exact} для ${target.name} ` +
                       'установлен на продуктивную систему</b>');
         out.push('Список изменений:');
         block.forEach(function(line) {
