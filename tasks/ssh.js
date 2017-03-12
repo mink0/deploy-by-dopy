@@ -28,6 +28,8 @@ exports.task = (env, argv, taskCb) => {
   if (!Array.isArray(servers)) servers = [servers];
 
   let path = env.config.remote.path || '.';
+  if (env.config.targets && env.config.targets.noodoo)
+    path = env.config.targets.noodoo.remote.path;
 
   let srv = argv.server || servers[0];
 

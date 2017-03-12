@@ -333,7 +333,7 @@ exports.task = (env, argv, taskCb) => {
 
       target.log('tags:', 'reset');
       target.log('  current: ' + chalk.reset(release.local));
-      target.log('  installing: ' + chalk.reset(release.origin));
+      target.log('  install: ' + chalk.reset(release.origin));
 
       if (!noChanges) tags += chalk.reset.bgBlack('code');
       else tags += chalk.inverse('no code changes found');
@@ -419,7 +419,7 @@ exports.task = (env, argv, taskCb) => {
         let ndEnv = 'production';
         if (config.branch === 'development') ndEnv = 'development';
 
-        let ndPath = path.join(config.path, '..', '..');
+        let ndPath = config.path;
         if (config.targets && config.targets.noodoo)
           ndPath = config.targets.noodoo;
 
@@ -431,7 +431,8 @@ exports.task = (env, argv, taskCb) => {
         let cmd = 'cd ' + ndPath + ' && NODE_ENV=' + ndEnv +
           ' node tasks ' + orgName + '/' + ndTask;
 
-        if (argv.f) return target.ssh.execSeries(cmd, cb);
+        //if (argv.f) return target.ssh.execSeries(cmd, cb);
+        if (argv.f) return cb(null);
 
         inquirer.prompt([{
           type: 'confirm',
