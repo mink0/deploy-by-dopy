@@ -41,10 +41,14 @@ exports.task = (env, argv, taskCb) => {
     cmd = target;
     target = null;
     cmds = env.config.remote.cmd;
-  } else {
+  } else if (env.config.targets && env.config.targets[target]) {
     cmds = env.config.targets[target].remote.cmd;
     cd = env.config.targets[target].remote.path;
     user = env.config.targets[target].remote.user;
+  } else {
+    cmds = env.config.remote.cmd;
+    cd = env.config.remote.path;
+    user = env.config.remote.user;
   }
 
   // find the arguments to send to remote command

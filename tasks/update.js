@@ -61,7 +61,7 @@ exports.task = (env, argv, taskCb) => {
   function postCmd(cb) {
     if (!env.config.remote.cmd.post) return cb(null);
 
-    env.remote(env.config.remote.cmd.post, { mute: true }, cb);
+    env.remote(env.config.remote.cmd.post, cb);
   }
 
   function confirmRestart(cb) {
