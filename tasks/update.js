@@ -1,8 +1,8 @@
 const chalk = require('chalk');
 const inquirer = require('inquirer');
 const path = require('path');
-const opn = require('opn');
 const async = require('async');
+const restartTask = require('./restart').task;
 
 const dopy = global.dopy;
 
@@ -37,15 +37,13 @@ exports.task = (env, argv, taskCb) => {
     targetsLoop,
     confirmRestart,
     restart,
-    postCmd,
-    status,
     printReport,
   ], taskCb);
 
   function preCmd(cb) {
     if (!env.config.remote.cmd.pre) return cb(null);
 
-    env.remote(env.config.remote.cmd.pre, { mute: true }, cb);
+    env.remote(env.config.remote.cmd.pre, cb);
   }
 
   function targetsLoop(targetsCb) {
@@ -56,12 +54,6 @@ exports.task = (env, argv, taskCb) => {
     env.targets.forEach(t => tasks.push(cb => targetProcessor(t, cb)));
 
     async.series(tasks, targetsCb);
-  }
-
-  function postCmd(cb) {
-    if (!env.config.remote.cmd.post) return cb(null);
-
-    env.remote(env.config.remote.cmd.post, cb);
   }
 
   function confirmRestart(cb) {
@@ -79,49 +71,7 @@ exports.task = (env, argv, taskCb) => {
   }
 
   function restart(cb) {
-    env.log('restarting the servers:');
-
-    let urls = [];
-    env.targets.forEach(t => {
-      if (t.config.remote.url) urls.push(t.config.remote.url);
-    });
-
-    let prompt = (srv, exec) => {
-      return () => inquirer.prompt([{
-          name: 'confirm',
-          type: 'confirm',
-          message: `Restart the ${chalk.yellow(srv)} ?`,
-        }]).then(ans => {
-          if (ans.confirm)
-            return exec().then(() => {
-              urls.forEach(url => {
-                opn(url);
-              });
-            });
-        });
-    };
-
-    let cmd = env.config.remote.cmd.reload || env.config.remote.cmd.restart;
-    env.ssh.execSeries(cmd, prompt, cb);
-  }
-
-  function status(cb) {
-    // if (!env.config.remote.cmd.status) return cb(null);
-    env.log('server status:');
-
-    let count = 0;
-    recursive(cb);
-
-    function recursive(cb) {
-      env.remote(env.config.remote.cmd.status, (err, res) => {
-        if (err) {
-          if (++count > 5) return cb(err);
-          else return setTimeout(() => recursive(cb), 1000);
-        }
-
-        return cb(null);
-      });
-    }
+    restartTask(env, {}, cb);
   }
 
   function printReport(cb) {

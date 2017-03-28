@@ -1,15 +1,13 @@
 const dopy = global.dopy;
 
-const config = dopy.config;
-
 exports.command = 'log [type]';
 
 exports.desc = 'Show logs from remote server';
 
 exports.builder = (yargs) => {
-  if (!config.env.config.remote) return;
+  if (!dopy.config.env.config.remote) return;
 
-  let targets = config.env.config.remote.log;
+  let targets = dopy.config.env.config.remote.log;
 
   if (!targets || typeof targets !== 'object') return;
 

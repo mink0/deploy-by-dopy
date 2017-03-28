@@ -1,7 +1,5 @@
 const dopy = global.dopy;
 
-const config = dopy.config;
-
 exports.command = 'cmd-target [target] [command]';
 
 exports.desc = 'Run remote command at server\'s target';
@@ -23,7 +21,7 @@ exports.builder = (yargs) => {
     }
   }
 
-  let cmds = config.env.config.remote.cmd;
+  let cmds = dopy.config.env.config.remote.cmd;
 
   for (let cmd in cmds) {
     yargs.command(cmd, cmds[cmd]);

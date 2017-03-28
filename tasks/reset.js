@@ -5,7 +5,7 @@ exports.command = 'reset [targets]';
 exports.desc = 'Git reset local repository';
 
 exports.builder = (yargs) => {
-  let targets = dopy.config.env.config.targets
+  let targets = dopy.config.env.config.targets;
 
   if (targets) {
     yargs.demand(1);

@@ -1,15 +1,13 @@
 const dopy = global.dopy;
 
-const config = dopy.config;
-
 exports.command = 'cat [file]';
 
 exports.desc = 'Print file from remote server';
 
 exports.builder = (yargs) => {
-  if (!config.env.config.remote) return;
+  if (!dopy.config.env.config.remote) return;
 
-  let targets = config.env.config.remote.cat;
+  let targets = dopy.config.env.config.remote.cat;
 
   if (!targets || typeof targets !== 'object') return;
 

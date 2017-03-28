@@ -2,16 +2,15 @@ const spawn = require('child_process').spawn;
 
 const cmd = 'ssh';
 const dopy = global.dopy;
-const config = dopy.config;
 
 exports.command = 'ssh [server]';
 
 exports.desc = 'Ssh to remote server';
 
 exports.builder = (yargs) => {
-  if (!config.env.config.remote) return;
+  if (!dopy.config.env.config.remote) return;
 
-  let targets = config.env.config.remote.servers;
+  let targets = dopy.config.env.config.remote.servers;
 
   if (!targets || typeof targets !== 'object') return;
 
