@@ -43,7 +43,7 @@ exports.task = (env, argv, taskCb) => {
   function preCmd(cb) {
     if (!env.config.remote.cmd.pre) return cb(null);
 
-    env.remote(env.config.remote.cmd.pre, cb);
+    env.remote(env.config.remote.cmd.pre, { verbose: true }, cb);
   }
 
   function targetsLoop(targetsCb) {

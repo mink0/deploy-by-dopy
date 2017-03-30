@@ -1,8 +1,8 @@
 const dopy = global.dopy;
 
-exports.command = 'cmd-target [target] [command]';
+exports.command = 'cmd [target] [command]';
 
-exports.desc = 'Run remote command at server\'s target';
+exports.desc = 'Run arbitrary command at remote server';
 
 exports.builder = (yargs) => {
   let targets = dopy.config.env.config.targets;
@@ -39,14 +39,18 @@ exports.task = (env, argv, taskCb) => {
     cmd = target;
     target = null;
     cmds = env.config.remote.cmd;
-  } else if (env.config.targets && env.config.targets[target]) {
-    cmds = env.config.targets[target].remote.cmd;
-    cd = env.config.targets[target].remote.path;
-    user = env.config.targets[target].remote.user;
-  } else {
-    cmds = env.config.remote.cmd;
-    cd = env.config.remote.path;
-    user = env.config.remote.user;
+  }
+
+  if (target) {
+    if (env.config.targets && env.config.targets[target]) {
+      cmds = env.config.targets[target].remote.cmd;
+      cd = env.config.targets[target].remote.path;
+      user = env.config.targets[target].remote.user;
+    } else {
+      cmds = env.config.remote.cmd;
+      cd = env.config.remote.path;
+      user = env.config.remote.user;
+    }
   }
 
   // find the arguments to send to remote command
