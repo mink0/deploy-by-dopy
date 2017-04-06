@@ -97,7 +97,7 @@ exports.task = (env, argv, taskCb) => {
 
     async.series([
       checkBranch,
-      preCmd,
+      // targetPreCmd,
       gitFetch,
       checkOriginRelease,
       checkLocalRelease,
@@ -116,6 +116,12 @@ exports.task = (env, argv, taskCb) => {
       makeReport,
       showResults,
     ], targetCb);
+
+    function targetPreCmd(cb) {
+      if (!target.config.remote.cmd.pre) return cb(null);
+
+      env.remote(target.config.remote.cmd.pre, { verbose: true }, cb);
+    }
 
     function checkBranch(cb) {
       if (argv.f) return cb(null);
