@@ -56,7 +56,6 @@ exports.task = (env, argv, taskCb) => {
 
   function targetsRestart(cb) {
     if (!env.targets) return cb(null);
-
     let tasks = [];
 
     env.targets.forEach(t => tasks.push(next => processor(t, next)));
@@ -64,7 +63,7 @@ exports.task = (env, argv, taskCb) => {
     async.series(tasks, cb);
 
     function processor(target, targetCb) {
-      let cmd = get(target, 'config.remote.cmd.target');
+      let cmd = get(target, 'config.remote.cmd');
 
       if (!cmd) return targetCb(null);
 
@@ -82,6 +81,8 @@ exports.task = (env, argv, taskCb) => {
 
   function restart(opts) {
     return function(cb) {
+      if (!opts.restart && !opts.reload) return cb(null);
+
       let target = opts.target;
 
       target.log(`restarting ${target.name}:`);
