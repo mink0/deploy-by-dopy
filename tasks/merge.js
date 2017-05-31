@@ -3,7 +3,7 @@ const chalk = require('chalk');
 const inquirer = require('inquirer');
 const log = require('debug')('merge');
 
-const BRANCHES = ['test', 'staging', 'development', 'demo', 'vision'];
+const BRANCHES = ['test', 'staging', 'development'];
 const dopy = global.dopy;
 
 exports.command = 'merge [targets]';

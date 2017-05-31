@@ -63,9 +63,12 @@ exports.task = (env, argv, taskCb) => {
     async.series(tasks, cb);
 
     function processor(target, targetCb) {
-      let cmd = get(target, 'config.remote.cmd');
+      let cmd = get(target, 'config.remote.cmd.target');
 
-      if (!cmd) return targetCb(null);
+      if (!cmd) {
+        target.log('no cmd.target.restart scripts found');
+        return targetCb(null);
+      }
 
       async.series([
         restart({
