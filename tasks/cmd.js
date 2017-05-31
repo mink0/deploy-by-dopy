@@ -5,6 +5,8 @@ exports.command = 'cmd [target] [command]';
 exports.desc = 'Run arbitrary command at remote server';
 
 exports.builder = (yargs) => {
+  if (!dopy.config.env.config.remote) return;
+
   let targets = dopy.config.env.config.targets;
 
   if (targets) {
