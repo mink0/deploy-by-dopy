@@ -23,6 +23,8 @@ exports.task = (env, argv, taskCb) => {
 
   let path = (typeof logs === 'object') ? logs[argv.type || 'noodoo'] : logs;
 
-  env.remote(`tail -n100 -f ${path} | grep -v "nd-db:time"`,
-    { verbose:true }, taskCb);
+  let cmd = `tail -n 100 -f ${path}`; //  | grep -v "nd-db:time"
+  if (path.includes('journalctl')) cmd = `${path}  -o cat -n 100 -f`;
+
+  env.remote(cmd, { verbose:true }, taskCb);
 };

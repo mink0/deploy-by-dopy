@@ -13,7 +13,7 @@ exports.builder = (yargs) => {
   let targets = dopy.config.env.config.targets;
 
   if (targets) {
-    yargs.demand(1);
+    // yargs.demand(1);
     for (let target in targets) {
       let descr = `remote path: ${targets[target].remote.path}`;
       yargs.command(target, descr, srvBuilder);
