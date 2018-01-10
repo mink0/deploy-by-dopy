@@ -351,7 +351,11 @@ exports.task = (env, argv, taskCb) => {
     function npmInstall(cb) {
       if (argv.f) return target.remote('npm install', cb);
 
-      let msg = 'Run ' + chalk.yellow('npm install') + ' ?';
+      let cmd = 'npm install';
+
+      if (target.config.remote.yarn) cmd = 'yarn install';
+
+      let msg = 'Run ' + chalk.yellow(cmd) + ' ?';
 
       if (checkResults['packages'])
         msg = 'New modules were found! ' + msg;
@@ -363,7 +367,7 @@ exports.task = (env, argv, taskCb) => {
         default: !!checkResults['packages']
       }]).then(ans => {
         if (!ans.confirm) return cb(null);
-        target.remote('npm install', cb);
+        target.remote(cmd, cb);
       });
     }
 
@@ -376,16 +380,17 @@ exports.task = (env, argv, taskCb) => {
         if (config.branch === 'development') ndEnv = 'development';
 
         let ndPath = config.path;
-        if (config.targets && config.targets.noodoo)
-          ndPath = config.targets.noodoo;
+        if (env.config.targets && env.config.targets.noodoo)
+          ndPath = env.config.targets.noodoo.remote.path;
 
         let orgName = path.basename(config.path);
         if (orgName === 'flow') orgName = 'deals';
 
-        let ndTask = type;
-
-        let cmd = 'cd ' + ndPath + ' && NODE_ENV=' + ndEnv +
-          ' node tasks ' + orgName + '/' + ndTask;
+        let cmd = 'npm run migrate';
+        if (type === 'migrate_flexible') {
+          cmd = 'cd ' + ndPath + ' && NODE_ENV=' + ndEnv +
+          ' node tasks ' + orgName + '/' + type;
+        }
 
         //if (argv.f) return target.ssh.execSeries(cmd, cb);
         if (argv.f) return cb(null);
@@ -415,8 +420,8 @@ exports.task = (env, argv, taskCb) => {
         let count = 0;
         for (let i = 0; i < lines.length; i++) {
           if (lines[i].indexOf('##') === 0) count++;
-          if (count === 2) block.push(lines[i]);
-          if (count === 3) break;
+          if (count === 1) block.push(lines[i]);
+          if (count === 2) break;
         }
 
         block.splice(0, 1);

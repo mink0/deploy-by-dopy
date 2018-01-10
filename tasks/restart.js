@@ -161,7 +161,7 @@ exports.task = (env, argv, taskCb) => {
       });
 
       if (stdout.length > 0) {
-        env.log('WARNING: found hang nodejs processes:', 'bgRed');
+        env.log('WARNING: found lost and hang nodejs processes:', 'bgRed');
         stdout.forEach(i => env.log(i, 'reset'));
       }
 

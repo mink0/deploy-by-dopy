@@ -11,7 +11,7 @@ exports.builder = (yargs) => {
     yargs.demand(1);
 
     for (let target in targets) {
-      yargs.command(target, `remote path: ${targets[target].remote.path}`);
+      yargs.command(target, `path: ${targets[target].remote.path}`);
     }
   }
 };

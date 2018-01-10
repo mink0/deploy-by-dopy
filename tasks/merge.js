@@ -106,7 +106,13 @@ exports.task = (env, argv, taskCb) => {
           cb => checkSingleSection(cb),
           cb => checkPlacement(cb),
           cb => checkDuplicates(cb),
-        ], cb);
+        ], done);
+
+        function done(err, res) {
+          if (checkResults.unchanged) checkResults.ok = true;
+
+          cb(err, res);
+        }
 
         function checkSingleSection(next) {
           target.local('git diff -U0 origin/master CHANGELOG.md | ' +
@@ -132,8 +138,8 @@ exports.task = (env, argv, taskCb) => {
           }, (err, res) => {
             if (err) return next(err);
 
-            if (res.stdout.trim() === '') {
-              checkResults.ok = true;
+            if (res.stdout === '') {
+              checkResults.unchanged = true;
               return next(null);
             }
 
