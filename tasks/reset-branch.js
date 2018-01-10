@@ -13,9 +13,9 @@ exports.builder = (yargs) => {
 
   yargs
     .boolean('f')
-    .describe('f', 'force push')
+    .describe('f', 'force git push')
     .default('b', 'master')
-    .describe('b', 'branch to reset to');
+    .describe('b', 'target branch will be reset to this one');
 
   if (targets) {
     yargs.demand(1);
@@ -52,7 +52,7 @@ exports.task = (env, argv, taskCb) => {
       showStatus,
       confirmPush,
       gitPush,
-      // showResults,
+      resetToOrigin
     ], targetCb);
 
     function gitFetch(cb) {
@@ -61,13 +61,18 @@ exports.task = (env, argv, taskCb) => {
     }
 
     function changeCurBranch(cb) {
-      target.log(`changing current git branch to remote's "${rconfig.branch}"`);
+      target.log(`checkout git branch to configured remote one: "${rconfig.branch}"`);
       target.local(`git checkout ${rconfig.branch}`, cb);
     }
 
     function resetBranch(cb) {
-      target.log(`reset current git branch to "${targetBranch}"`);
+      target.log(`reset git branch to "${targetBranch}"`);
       target.local(`git reset --hard origin/${targetBranch}`, cb);
+    }
+
+    function resetToOrigin(cb) {
+      target.log(`reset git branch to origin "${lconfig.branch}"`);
+      target.local(`git reset --hard origin/${lconfig.branch}`, cb);
     }
 
     function showStatus(cb) {
@@ -82,12 +87,10 @@ exports.task = (env, argv, taskCb) => {
         message: msg,
         name: 'confirm'
       }]).then(ans => {
-        if (!ans.confirm) {
-          target.log('skipped by user', 'dim');
-          return targetCb();
-        }
+        if (ans.confirm) return cb();
 
-        cb();
+        target.log('skipped by user', 'dim');
+        return resetToOrigin(targetCb);
       });
     }
 
